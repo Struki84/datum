@@ -7,9 +7,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/muesli/termenv"
-	"github.com/struki84/clipt/tui"
-	"github.com/struki84/clipt/tui/schema"
-	"github.com/struki84/clipt/tui/style"
+	"github.com/struki84/datum/clipt/tui"
+	"github.com/struki84/datum/clipt/tui/schema"
+	"github.com/struki84/datum/clipt/tui/style"
 )
 
 func Render(providers []schema.ChatProvider, options ...Option) {

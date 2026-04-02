@@ -2,7 +2,7 @@ package clipt
 
 import (
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/struki84/clipt/tui/schema"
+	"github.com/struki84/datum/clipt/tui/schema"
 )
 
 type Option func(*schema.Config)

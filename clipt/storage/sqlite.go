@@ -8,10 +8,10 @@ import (
 	"log"
 	"strings"
 
-	"github.com/struki84/clipt/tui/schema"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
+	"github.com/struki84/datum/clipt/tui/schema"
 	"github.com/thanhpk/randstr"
 )
 

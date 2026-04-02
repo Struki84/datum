@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/struki84/datum/tools/scraper"
+	scraper "github.com/struki84/datum/tools/scrapper"
 	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/documentloaders"
 	"github.com/tmc/langchaingo/llms/openai"

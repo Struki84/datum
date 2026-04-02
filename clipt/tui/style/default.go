@@ -3,7 +3,7 @@ package style
 import (
 	"github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/struki84/clipt/tui/schema"
+	"github.com/struki84/datum/clipt/tui/schema"
 )
 
 type ColorScheme int

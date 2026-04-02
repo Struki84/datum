@@ -3,7 +3,7 @@ package nodes
 import (
 	"context"
 
-	"github.com/AstroSynapseLab/mar-mar-ai/sdk/glg/graph"
+	"github.com/struki84/datum/sdk/glg/graph"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/tools"
 )

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/AstroSynapseLab/mar-mar-ai/internal/ai/tools/search/google"
-	"github.com/AstroSynapseLab/mar-mar-ai/sdk/glg/graph"
-	"github.com/AstroSynapseLab/mar-mar-ai/sdk/glg/nodes"
+	"github.com/struki84/datum/sdk/glg/graph"
+	"github.com/struki84/datum/sdk/glg/nodes"
+	"github.com/struki84/datum/tools/search/google"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/tools"
 	"github.com/tmc/langchaingo/tools/duckduckgo"

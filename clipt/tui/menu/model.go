@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/struki84/clipt/tui/schema"
+	"github.com/struki84/datum/clipt/tui/schema"
 )
 
 type ChatMenu struct {

@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/struki84/clipt/storage"
-	"github.com/struki84/clipt/tui/schema"
+	"github.com/struki84/datum/clipt/storage"
+	"github.com/struki84/datum/clipt/tui/schema"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/openai"
 )

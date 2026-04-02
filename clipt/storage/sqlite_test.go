@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/struki84/clipt/tui/schema"
+	"github.com/struki84/datum/clipt/tui/schema"
 	"github.com/thanhpk/randstr"
 )
 

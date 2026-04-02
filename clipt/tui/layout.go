@@ -7,9 +7,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/struki84/clipt/tui/chat"
-	"github.com/struki84/clipt/tui/menu"
-	"github.com/struki84/clipt/tui/schema"
+	"github.com/struki84/datum/clipt/tui/chat"
+	"github.com/struki84/datum/clipt/tui/menu"
+	"github.com/struki84/datum/clipt/tui/schema"
 	"github.com/thanhpk/randstr"
 )
 
