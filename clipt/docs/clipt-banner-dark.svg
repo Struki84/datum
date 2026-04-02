@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 130" width="390" height="130">
+  <text font-family="'Courier New', Courier, monospace" font-size="16" fill="#000000" xml:space="preserve">
+    <tspan x="5" y="18">  ██████╗ ██╗     ██╗ ██████╗ ████████╗</tspan>
+    <tspan x="5" y="38"> ██╔════╝ ██║     ██║ ██╔══██╗╚══██╔══╝</tspan>
+    <tspan x="5" y="58"> ██║      ██║     ██║ ██████╔╝   ██║</tspan>
+    <tspan x="5" y="78"> ██║      ██║     ██║ ██╔═══╝    ██║</tspan>
+    <tspan x="5" y="98"> ╚██████╗ ███████╗██║ ██║        ██║</tspan>
+    <tspan x="5" y="118">  ╚═════╝ ╚══════╝╚═╝ ╚═╝        ╚═╝</tspan>
+  </text>
+</svg>
