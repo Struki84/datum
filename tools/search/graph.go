@@ -63,8 +63,9 @@ func New(llm llms.Model, serpApiKey string) (*WebSearchTool, error) {
 	}
 
 	return &WebSearchTool{
-		llm:       llm,
-		functions: functions,
+		llm:        llm,
+		functions:  functions,
+		serpApiKey: serpApiKey,
 	}, nil
 }
 
