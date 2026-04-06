@@ -9,7 +9,9 @@ import (
 
 func AgentNode(llm llms.Model, functions []llms.Tool) graph.NodeFunction {
 	return func(ctx context.Context, state []llms.MessageContent, options graph.Options) ([]llms.MessageContent, error) {
-		options.CallbackHandler.HandleNodeStart(ctx, "AgentNode", state)
+		if options.CallbackHandler != nil {
+			options.CallbackHandler.HandleNodeStart(ctx, "AgentNode", state)
+		}
 
 		response, err := llm.GenerateContent(ctx, state, llms.WithTools(functions))
 		if err != nil {
@@ -26,7 +28,10 @@ func AgentNode(llm llms.Model, functions []llms.Tool) graph.NodeFunction {
 
 		state = append(state, msg)
 
-		options.CallbackHandler.HandleNodeEnd(ctx, "AgentNode", state)
+		if options.CallbackHandler != nil {
+			options.CallbackHandler.HandleNodeEnd(ctx, "AgentNode", state)
+		}
+
 		return state, nil
 	}
 }

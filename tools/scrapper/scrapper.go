@@ -71,7 +71,7 @@ func New(options ...Options) (*Scraper, error) {
 // No parameters.
 // Returns a string.
 func (s Scraper) Name() string {
-	return "Web Scraper"
+	return "WebBrowser"
 }
 
 // Description returns the description of the Go function.

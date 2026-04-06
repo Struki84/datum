@@ -10,7 +10,10 @@ import (
 
 func ToolNode(nodeTools []tools.Tool) graph.NodeFunction {
 	return func(ctx context.Context, state []llms.MessageContent, options graph.Options) ([]llms.MessageContent, error) {
-		options.CallbackHandler.HandleNodeStart(ctx, "ToolNode", state)
+
+		if options.CallbackHandler != nil {
+			options.CallbackHandler.HandleNodeStart(ctx, "ToolNode", state)
+		}
 
 		lastMsg := state[len(state)-1]
 
@@ -50,7 +53,9 @@ func ToolNode(nodeTools []tools.Tool) graph.NodeFunction {
 			}
 		}
 
-		options.CallbackHandler.HandleNodeEnd(ctx, "ToolNode", state)
+		if options.CallbackHandler != nil {
+			options.CallbackHandler.HandleNodeEnd(ctx, "ToolNode", state)
+		}
 		return state, nil
 	}
 }

@@ -26,13 +26,11 @@ const (
 	ErrLoadingDocuments   = "Browser Agent failed to load web into documents"
 	ErrSummarising        = "Browser Agent failed to summarise web"
 	SummarisationTemplate = `
-		Please write a detailed report of the following website and its pages that will not exceed 4048 tokens:
+	Please write a detailed report of the following website and its pages:
 
 		"{{.context}}"
 
 		If query is provided, focus on the content related to the query. 
-
-		Query: {{.query}}
 
 		Structure the report in the following format:
 
@@ -91,14 +89,11 @@ func (agent *BrowserAgent) Description() string {
 		Web Browser Agent is an agent specialized in scraping and reading the web pages.
 		It will read and summarize the content of the web page and return it as output.
 		
-		Input should be a json string containing the url of the web page a query string.  
-		The query string, if set, will tell the agent what to search for within the web page, 
-		leave blank for a general summary.
+		Input should be a json string containing the url of the web page.  
 
 		Input JSON Format:
 		{
 			"url": "[url of the web page]", 
-			"query": "[query string]"
 		}
 	`
 }
@@ -153,11 +148,7 @@ func (agent *BrowserAgent) loadWebContent(ctx context.Context, url string) ([]sc
 	}
 
 	webContentReader := strings.NewReader(webContent)
-
 	loader := documentloaders.NewText(webContentReader)
-	if err != nil {
-		return []schema.Document{}, err
-	}
 
 	spliter := textsplitter.NewTokenSplitter()
 	spliter.ChunkSize = 7500

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -67,6 +68,9 @@ func (s *Client) Search(ctx context.Context, query string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	log.Println(result)
+	log.Printf("used api key: %s", s.apiKey)
 
 	if errorValue, ok := result["error"]; ok {
 		return "", fmt.Errorf("%w: %v", ErrAPIError, errorValue)

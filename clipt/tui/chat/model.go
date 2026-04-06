@@ -170,7 +170,7 @@ func (chat ChatView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		chat.Loader = loader
 		cmds = append(cmds, cmd)
 	case schema.Msg:
-		if chat.IsLoading {
+		if chat.IsLoading && msg.Role == schema.AIMsg {
 			chat.IsLoading = false
 		}
 
@@ -222,14 +222,15 @@ func (chat ChatView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				chat.Msgs = append(chat.Msgs, userMsg)
 
-				aiMsg := schema.Msg{
-					Stream:    true,
-					Content:   "",
-					Role:      schema.AIMsg,
-					Timestamp: time.Now().Unix(),
-				}
-
-				chat.Msgs = append(chat.Msgs, aiMsg)
+				// aiMsg := schema.Msg{
+				// 	Stream:    true,
+				// 	Content:   "",
+				// 	Role:      schema.AIMsg,
+				// 	Timestamp: time.Now().Unix(),
+				// }
+				//
+				// chat.Msgs = append(chat.Msgs, aiMsg)
+				//
 
 				chat.Viewport.SetContent(chat.RenderMsgs())
 				chat.Viewport.GotoBottom()
