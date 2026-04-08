@@ -4,3 +4,4 @@ debug.log
 *.db-wal
 .DS_Store
 config.json
+*.config.json
