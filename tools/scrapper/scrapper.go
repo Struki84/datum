@@ -2,8 +2,10 @@ package scraper
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -95,8 +97,17 @@ func (s Scraper) Description() string {
 //
 //nolint:all
 func (s Scraper) Call(ctx context.Context, input string) (string, error) {
-	fmt.Println("Scraping web page:", input)
-	_, err := url.ParseRequestURI(input)
+	log.Println("Scraping web page:", input)
+
+	var args struct {
+		URL string `json:"url"`
+	}
+
+	if err := json.Unmarshal([]byte(input), &args); err != nil {
+		return fmt.Sprintf("failed to parse web browser tool input, %s", err), nil
+	}
+
+	_, err := url.ParseRequestURI(args.URL)
 	if err != nil {
 		return fmt.Sprintf("%s: %s", ErrParsingURIFailed, err), nil
 	}
@@ -155,7 +166,7 @@ func (s Scraper) Call(ctx context.Context, input string) (string, error) {
 				siteData.WriteString("\n" + el.Text)
 			})
 
-			if currentURL == input {
+			if currentURL == args.URL {
 				e.ForEach("a", func(_ int, el *colly.HTMLElement) {
 					link := el.Attr("href")
 					if link != "" && !homePageLinks[link] {
@@ -201,7 +212,7 @@ func (s Scraper) Call(ctx context.Context, input string) (string, error) {
 		}
 	})
 
-	err = c.Visit(input)
+	err = c.Visit(args.URL)
 	if err != nil {
 		return fmt.Sprintf("%s: %s", ErrScrapingFailed, err), nil
 	}

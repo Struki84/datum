@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"context"
+	"log"
 
 	"github.com/struki84/datum/sdk/glg/graph"
 	"github.com/tmc/langchaingo/llms"
@@ -25,6 +26,7 @@ func ToolNode(nodeTools []tools.Tool) graph.NodeFunction {
 
 				toolNotFound = true
 				for _, tool := range nodeTools {
+					log.Printf("trying to execute tool node for tool name %s, and function call %s", tool.Name(), toolCall.FunctionCall.Name)
 					if tool.Name() == toolCall.FunctionCall.Name {
 						toolNotFound = false
 						toolResponse, err = tool.Call(ctx, toolCall.FunctionCall.Arguments)

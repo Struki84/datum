@@ -96,9 +96,6 @@ func (search *WebSearchTool) Call(ctx context.Context, input string) (string, er
 
 				var toolResponse string
 				if toolCall.FunctionCall.Name == "primarySearch" {
-
-					log.Println("Using primary search...")
-
 					google, err := google.New(search.serpApiKey, 10)
 					if err != nil {
 						log.Printf("google search error: %v", err)
@@ -110,14 +107,9 @@ func (search *WebSearchTool) Call(ctx context.Context, input string) (string, er
 						log.Printf("google search error: %v", err)
 						return state, err
 					}
-
-					log.Printf("primary search results: %s", toolResponse)
 				}
 
 				if toolCall.FunctionCall.Name == "secondarySearch" {
-
-					log.Println("Using secondary search...")
-
 					search, err := duckduckgo.New(10, duckduckgo.DefaultUserAgent)
 					if err != nil {
 						log.Printf("ddg search error: %v", err)
@@ -129,8 +121,6 @@ func (search *WebSearchTool) Call(ctx context.Context, input string) (string, er
 						log.Printf("ddg search error: %v", err)
 						return state, err
 					}
-
-					log.Printf("secondary search results: %s", toolResponse)
 				}
 
 				msg := llms.MessageContent{

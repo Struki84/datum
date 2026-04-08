@@ -8,13 +8,14 @@ import (
 
 	"github.com/struki84/datum/clipt/storage"
 	"github.com/struki84/datum/clipt/tui/schema"
+	"github.com/struki84/datum/config"
 	"github.com/struki84/datum/sdk/glg/graph"
 	"github.com/struki84/datum/sdk/glg/nodes"
+	scraper "github.com/struki84/datum/tools/scrapper"
 	"github.com/struki84/datum/tools/search"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/openai"
 	"github.com/tmc/langchaingo/tools"
-	"github.com/tmc/langchaingo/tools/scraper"
 )
 
 var (
@@ -114,7 +115,7 @@ type ChatAgent struct {
 	tools         []tools.Tool
 	cycle         int
 	maxCycles     int
-	config        *Config
+	config        *config.Config
 }
 
 func NewChatAgent(model string, storage storage.SQLite) *ChatAgent {
@@ -153,7 +154,7 @@ func NewChatAgent(model string, storage storage.SQLite) *ChatAgent {
 		},
 	}
 
-	cnf := NewConfig()
+	cnf := config.New()
 
 	llm, err := openai.New(
 		openai.WithModel(model),
