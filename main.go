@@ -9,11 +9,28 @@ import (
 )
 
 func main() {
+
+	// sentry := files.NewFileSentry("./files", client)
+	//
+	// err = sentry.ScanFiles(ctx)
+	// if err != nil {
+	// 	log.Println("Error scanning for files:", err)
+	// 	return
+	// }
+	//
+	// go func() {
+	// 	err = sentry.WatchFiles(ctx)
+	// 	if err != nil {
+	// 		log.Println("Error watching files:", err)
+	// 	}
+	// }()
+
 	dbPath := "./basic.db"
 	sqlite := *storage.NewSQLite(dbPath)
 
 	models := []schema.ChatProvider{
-		agents.NewChatAgent("openai/gpt-5.4", sqlite),
+		agents.NewChatAgent("openai/gpt-4.1", sqlite),
+		agents.NewVoiceAgent(agents.NewChatAgent("openai/gpt-5.5-mini", sqlite)),
 	}
 
 	clipt.Render(

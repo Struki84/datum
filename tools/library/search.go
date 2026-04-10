@@ -1,112 +1,110 @@
 package library
 
-// import (
-// 	"context"
-// 	"encoding/json"
-// 	"fmt"
-// 	"log"
-// 	"os"
-// 	"strconv"
-//
-// 	"github.com/AstroSynapseLab/mar-mar-ai/internal/models"
-// 	"github.com/AstroSynapseLab/mar-mar-ai/utils/storage"
-// 	"github.com/tmc/langchaingo/tools"
-// )
-//
-// var _ tools.Tool = &FileSearchTool{}
-//
-// type FileSearchTool struct {
-// 	Chroma storage.VectorStore
-// 	Docs   []models.Document
-// 	apiKey string
-// 	user   string
-// }
-//
-// func NewSerchFilesTool(docs []models.Document, openAIAPIKey string, user string) (*FileSearchTool, error) {
-// 	host := os.Getenv("CHROMA_HOST")
-// 	port := os.Getenv("CHROMA_PORT")
-// 	url := fmt.Sprintf("http://%s:%s", host, port)
-//
-// 	chroma, err := storage.NewChromaStore(url)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	chroma.SetupDB(context.Background())
-//
-// 	return &FileSearchTool{
-// 		Chroma: chroma,
-// 		Docs:   docs,
-// 		apiKey: openAIAPIKey,
-// 		user:   user,
-// 	}, nil
-// }
-//
-// func (tool *FileSearchTool) Name() string {
-// 	return "SearchFiles"
-// }
-//
-// func (tool *FileSearchTool) Description() string {
-// 	return "Searches for files."
-// }
-//
-// func (tool *FileSearchTool) Call(ctx context.Context, input string) (string, error) {
-// 	log.Println("Searching for files with input:", input)
-//
-// 	var toolInput struct {
-// 		Query string `json:"query,omitempty"`
-// 	}
-//
-// 	err := json.Unmarshal([]byte(input), &toolInput)
-// 	if err != nil {
-// 		return fmt.Sprintf("%v: %s", "invalid input", err), nil
-// 	}
-//
-// 	results, err := tool.Chroma.SearchFiles(tool.Docs, toolInput.Query, tool.user, tool.apiKey)
-// 	if err != nil {
-// 		return "", err
-// 	}
-//
-// 	type foundDoc struct {
-// 		ID          uint   `json:"id,omitempty"`
-// 		Name        string `json:"name,omitempty"`
-// 		URL         string `json:"url,omitempty"`
-// 		Description string `json:"description,omitempty"`
-// 		Language    string `json:"language,omitempty"`
-// 		IsPublic    bool   `json:"isPublic,omitempty"`
-// 		Content     string `json:"content,omitempty"`
-// 		Page        string `json:"page,omitempty"`
-// 		TotalPages  string `json:"totalPages,omitempty"`
-// 	}
-//
-// 	SearchResults := []foundDoc{}
-//
-// 	awsStorage, _ := storage.NewAWS()
-//
-// 	for _, result := range results {
-// 		ID, _ := strconv.ParseUint(result["docID"].(string), 10, 64)
-//
-// 		for _, doc := range tool.Docs {
-// 			if doc.ID == uint(ID) {
-// 				SearchResults = append(SearchResults, foundDoc{
-// 					ID:          doc.ID,
-// 					Name:        doc.Name,
-// 					URL:         awsStorage.GetTempURL(doc.Path),
-// 					Description: doc.Description,
-// 					Language:    doc.Language,
-// 					IsPublic:    doc.IsPublic,
-// 					Content:     result["content"].(string),
-// 					Page:        result["page"].(string),
-// 					TotalPages:  result["totalPages"].(string),
-// 				})
-// 			}
-// 		}
-// 	}
-//
-// 	jsonBytes, err := json.Marshal(SearchResults)
-// 	if err != nil {
-// 		return "", err
-// 	}
-//
-// 	return string(jsonBytes), nil
-// }
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+
+	"github.com/struki84/datum/config"
+	"github.com/tmc/langchaingo/embeddings"
+	"github.com/tmc/langchaingo/llms/openai"
+	"github.com/tmc/langchaingo/tools"
+	"github.com/tmc/langchaingo/vectorstores"
+	"github.com/tmc/langchaingo/vectorstores/pinecone"
+)
+
+var _ tools.Tool = &FileSearchTool{}
+
+type SearchResult struct {
+	Source  string  `json:"source"`
+	Chunk   int     `json:"chunk"`
+	Content string  `json:"content"`
+	Score   float32 `json:"score"`
+}
+
+type FileSearchTool struct {
+	store pinecone.Store
+}
+
+func NewFileSearchTool() (*FileSearchTool, error) {
+	config := config.New()
+
+	llm, err := openai.New(openai.WithEmbeddingModel("text-embedding-3-small"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create embedder LLM: %w", err)
+	}
+
+	e, err := embeddings.NewEmbedder(llm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create embedder: %w", err)
+	}
+
+	store, err := pinecone.New(
+		pinecone.WithHost(config.PineconeHost),
+		pinecone.WithEmbedder(e),
+		pinecone.WithAPIKey(config.PineconeAPIKey),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Pinecone: %w", err)
+	}
+
+	return &FileSearchTool{
+		store: store,
+	}, nil
+}
+
+func (tool *FileSearchTool) Name() string {
+	return "SearchFiles"
+}
+
+func (tool *FileSearchTool) Description() string {
+	return "Searches the knowledge base for relevant information. Input should be a JSON object with a 'query' field."
+}
+
+func (tool *FileSearchTool) Call(ctx context.Context, input string) (string, error) {
+	log.Println("Searching files with input:", input)
+
+	var toolInput struct {
+		Query string `json:"query,omitempty"`
+	}
+
+	if err := json.Unmarshal([]byte(input), &toolInput); err != nil {
+		return fmt.Sprintf("invalid input: %s", err), nil
+	}
+
+	if toolInput.Query == "" {
+		return "no query provided", nil
+	}
+
+	docs, err := tool.store.SimilaritySearch(ctx, toolInput.Query, 5,
+		vectorstores.WithScoreThreshold(0.7),
+	)
+	if err != nil {
+		return fmt.Sprintf("search failed: %s", err), nil
+	}
+
+	if len(docs) == 0 {
+		return "no relevant results found", nil
+	}
+
+	results := make([]SearchResult, len(docs))
+	for i, doc := range docs {
+		source, _ := doc.Metadata["source"].(string)
+		chunk, _ := doc.Metadata["chunk"].(float64) // JSON numbers decode as float64
+
+		results[i] = SearchResult{
+			Source:  source,
+			Chunk:   int(chunk),
+			Content: doc.PageContent,
+			Score:   doc.Score,
+		}
+	}
+
+	jsonBytes, err := json.Marshal(results)
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonBytes), nil
+}

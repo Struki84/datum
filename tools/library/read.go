@@ -74,7 +74,7 @@ func (tool *ReadFileTool) Call(ctx context.Context, input string) (string, error
 	// tmp files location basePath
 	basePath := "./files"
 
-	filePath := filepath.Join(basePath, requestedFile) // adjust to however you resolve paths
+	filePath := filepath.Join(basePath, requestedFile)
 	fileBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Sprintf("error reading file: %s", err), nil

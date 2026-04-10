@@ -77,7 +77,7 @@ type ChatProvider interface {
 	Name() string
 	Type() ProviderType
 	Description() string
-	Run(ctx context.Context, input string, session ChatSession) error
+	Run(ctx context.Context, input string, session ChatSession) (string, error)
 	Stream(ctx context.Context, callback func(ctx context.Context, msg Msg) error)
 }
 

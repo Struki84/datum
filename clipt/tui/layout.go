@@ -1,12 +1,15 @@
 package tui
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/struki84/datum/agents"
 	"github.com/struki84/datum/clipt/tui/chat"
 	"github.com/struki84/datum/clipt/tui/menu"
 	"github.com/struki84/datum/clipt/tui/schema"
@@ -113,7 +116,7 @@ func (layout LayoutView) View() string {
 	providerType := layout.Style.StatusLine.ProviderType.Render(layout.Chat.Provider.Type().String())
 	providerName := layout.Style.StatusLine.ProviderName.Render(layout.Chat.Provider.Name())
 	tab := layout.Style.StatusLine.ModeLabel.Render("tab")
-	mode := layout.Style.StatusLine.ModeName.Render("CHAT")
+	mode := layout.Style.StatusLine.ModeName.Render(layout.Mode.String())
 
 	leftPart := lipgloss.JoinHorizontal(lipgloss.Top, providerType, providerName)
 	rightPart := lipgloss.JoinHorizontal(lipgloss.Top, tab, mode)
@@ -149,6 +152,30 @@ func (layout LayoutView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		layout.WindowSize = msg
 	case tea.KeyMsg:
 		switch msg.Type {
+		case tea.KeyTab:
+			if _, ok := layout.Chat.Provider.(*agents.VoiceAgent); ok {
+				// switching back to text
+				layout.Mode = schema.Chat
+				layout.Chat.Provider.(*agents.VoiceAgent).Deactivate()
+				layout.Chat.Provider = layout.Providers[0]
+				layout.Providers[0].Stream(context.TODO(), func(ctx context.Context, msg schema.Msg) error {
+					layout.Chat.Stream <- msg
+					return nil
+				})
+			} else {
+				// switching to voice
+				layout.Mode = schema.Speach
+				voiceAgent := layout.Providers[1].(*agents.VoiceAgent)
+				voiceAgent.Stream(context.TODO(), func(ctx context.Context, msg schema.Msg) error {
+					layout.Chat.Stream <- msg
+					return nil
+				})
+				if err := voiceAgent.Activate(layout.Chat.Session); err != nil {
+					log.Printf("voice activation failed: %v", err)
+				}
+				layout.Chat.Provider = voiceAgent
+			}
+			return layout, nil
 		case tea.KeyEsc:
 			if layout.Menu.Active {
 				layout.Menu = layout.Menu.Close()
@@ -158,6 +185,7 @@ func (layout LayoutView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC:
 			return layout, tea.Quit
 		}
+
 	}
 
 	prompt := layout.Chat.Input.Value()

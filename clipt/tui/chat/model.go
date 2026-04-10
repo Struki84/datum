@@ -236,7 +236,7 @@ func (chat ChatView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				chat.Viewport.GotoBottom()
 
 				go func() {
-					err := chat.Provider.Run(context.TODO(), input, chat.Session)
+					_, err := chat.Provider.Run(context.TODO(), input, chat.Session)
 					if err != nil {
 						log.Printf("Error: %v", err)
 					}

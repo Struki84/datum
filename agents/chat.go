@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/lokutor-ai/lokutor-orchestrator/pkg/orchestrator"
 	"github.com/struki84/datum/clipt/storage"
 	"github.com/struki84/datum/clipt/tui/schema"
 	"github.com/struki84/datum/config"
@@ -107,15 +108,16 @@ func (handler *ChatCallback) HandleNodeStream(ctx context.Context, node string, 
 }
 
 type ChatAgent struct {
-	LLM           *openai.LLM
-	streamHandler func(ctx context.Context, msg schema.Msg) error
-	currentModel  string
-	storage       storage.SQLite
-	functions     []llms.Tool
-	tools         []tools.Tool
-	cycle         int
-	maxCycles     int
-	config        *config.Config
+	LLM            *openai.LLM
+	streamHandler  func(ctx context.Context, msg schema.Msg) error
+	currentModel   string
+	storage        storage.SQLite
+	functions      []llms.Tool
+	tools          []tools.Tool
+	cycle          int
+	maxCycles      int
+	config         *config.Config
+	currentSession schema.ChatSession
 }
 
 func NewChatAgent(model string, storage storage.SQLite) *ChatAgent {
@@ -198,11 +200,15 @@ func (agent *ChatAgent) Description() string {
 	return "Datum Test Voice Agent"
 }
 
+func (agent *ChatAgent) SetSession(session schema.ChatSession) {
+	agent.currentSession = session
+}
+
 func (agent *ChatAgent) Stream(ctx context.Context, callback func(ctx context.Context, msg schema.Msg) error) {
 	agent.streamHandler = callback
 }
 
-func (agent *ChatAgent) Run(ctx context.Context, input string, session schema.ChatSession) error {
+func (agent *ChatAgent) Run(ctx context.Context, input string, session schema.ChatSession) (string, error) {
 	chat := func(ctx context.Context, state []llms.MessageContent, options graph.Options) ([]llms.MessageContent, error) {
 		options.CallbackHandler.HandleNodeStart(ctx, "Chat", state)
 
@@ -241,7 +247,7 @@ func (agent *ChatAgent) Run(ctx context.Context, input string, session schema.Ch
 	buffer, err := agent.storage.LoadMsgs(session.ID)
 	if err != nil {
 		log.Println(err)
-		return err
+		return "", err
 	}
 
 	userMsg := schema.Msg{
@@ -253,7 +259,7 @@ func (agent *ChatAgent) Run(ctx context.Context, input string, session schema.Ch
 	err = agent.storage.SaveMsg(session.ID, userMsg)
 	if err != nil {
 		log.Println(err)
-		return err
+		return "", err
 	}
 
 	callback := NewChatCallback()
@@ -279,13 +285,13 @@ func (agent *ChatAgent) Run(ctx context.Context, input string, session schema.Ch
 	chatAgent, err := workflow.Compile()
 	if err != nil {
 		log.Printf("Failed to create workflow %v", err)
-		return err
+		return "", err
 	}
 
 	resp, err := chatAgent.Invoke(ctx, initialState)
 	if err != nil {
 		log.Printf("Failed to invoke workflow %v", err)
-		return err
+		return "", err
 	}
 
 	text := resp[len(resp)-1].Parts[0].(llms.TextContent).Text
@@ -299,8 +305,20 @@ func (agent *ChatAgent) Run(ctx context.Context, input string, session schema.Ch
 	err = agent.storage.SaveMsg(session.ID, aiMsg)
 	if err != nil {
 		log.Println(err)
-		return err
+		return "", err
 	}
 
-	return nil
+	return text, nil
+}
+
+func (agent *ChatAgent) Complete(ctx context.Context, messages []orchestrator.Message, tools []orchestrator.Tool) (string, error) {
+	var userInput string
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role == "user" {
+			userInput = messages[i].Content
+			break
+		}
+	}
+
+	return agent.Run(ctx, userInput, agent.currentSession)
 }
