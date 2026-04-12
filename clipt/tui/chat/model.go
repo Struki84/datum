@@ -174,25 +174,20 @@ func (chat ChatView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			chat.IsLoading = false
 		}
 
-		lastMsg := chat.Msgs[len(chat.Msgs)-1]
 		if msg.Stream {
-			if !lastMsg.Stream {
-				aiMsg := schema.Msg{
+			if len(chat.Msgs) == 0 || !chat.Msgs[len(chat.Msgs)-1].Stream {
+				chat.Msgs = append(chat.Msgs, schema.Msg{
 					Stream:    true,
 					Content:   "",
 					Role:      schema.AIMsg,
 					Timestamp: time.Now().Unix(),
-				}
-
-				chat.Msgs = append(chat.Msgs, aiMsg)
-				lastMsg = aiMsg
+				})
 			}
 
-			lastMsg.Role = msg.Role
-			lastMsg.Content += msg.Content
-			lastMsg.Timestamp = msg.Timestamp
-
-			chat.Msgs[len(chat.Msgs)-1] = lastMsg
+			last := &chat.Msgs[len(chat.Msgs)-1]
+			last.Role = msg.Role
+			last.Content += msg.Content
+			last.Timestamp = msg.Timestamp
 		} else {
 			chat.Msgs = append(chat.Msgs, msg)
 		}

@@ -29,6 +29,13 @@ const (
 	voiceSpeaking
 )
 
+type NoOpLogger struct{}
+
+func (n *NoOpLogger) Debug(msg string, args ...interface{}) {}
+func (n *NoOpLogger) Info(msg string, args ...interface{})  {}
+func (n *NoOpLogger) Warn(msg string, args ...interface{})  {}
+func (n *NoOpLogger) Error(msg string, args ...interface{}) {}
+
 type VoiceAgent struct {
 	agent *ChatAgent
 
@@ -83,7 +90,7 @@ func NewVoiceAgent(chatAgent *ChatAgent) *VoiceAgent {
 	vad.SetMinConfirmed(4)
 
 	// chatAgent satisfies orchestrator.LLMProvider via Complete()
-	orch := orchestrator.NewWithVAD(stt, chatAgent, tts, vad, cfg)
+	orch := orchestrator.New(stt, chatAgent, tts, vad, cfg, &orchestrator.NoOpLogger{})
 
 	return &VoiceAgent{
 		agent: chatAgent,
@@ -118,12 +125,13 @@ func (v *VoiceAgent) Run(ctx context.Context, input string, session schema.ChatS
 // ── Activation / deactivation (called on tab switch) ─────────────────────────
 
 func (v *VoiceAgent) Activate(session schema.ChatSession) error {
+	v.ctx, v.cancel = context.WithCancel(context.Background())
+
 	v.agent.SetSession(session)
+	v.agent.Stream(v.ctx, v.streamHandler)
 
 	v.session = v.orch.NewSessionWithDefaults(session.ID)
-	v.orch.SetSystemPrompt(v.session, primerMsg) // primerMsg is in chat.go, same package
-
-	v.ctx, v.cancel = context.WithCancel(context.Background())
+	v.orch.SetSystemPrompt(v.session, primerMsg)
 
 	v.stream = v.orch.NewManagedStream(v.ctx, v.session)
 	v.stream.SetEchoSampleRates(sampleRate, sampleRate)
@@ -263,11 +271,11 @@ func (v *VoiceAgent) eventLoop() {
 			v.watchdogCancel = cancel
 			v.mu.Unlock()
 
-			v.emit(schema.Msg{
-				Role:      schema.SysMsg,
-				Content:   "⏳ Processing...",
-				Timestamp: time.Now().Unix(),
-			})
+			// v.emit(schema.Msg{
+			// 	Role:      schema.SysMsg,
+			// 	Content:   "⏳ Processing...",
+			// 	Timestamp: time.Now().Unix(),
+			// })
 
 			go v.watchdog(cancel)
 
@@ -290,20 +298,20 @@ func (v *VoiceAgent) eventLoop() {
 			}
 			v.mu.Unlock()
 
-			v.emit(schema.Msg{
-				Role:      schema.SysMsg,
-				Content:   "🤔 Thinking...",
-				Timestamp: time.Now().Unix(),
-			})
+			// v.emit(schema.Msg{
+			// 	Role:      schema.SysMsg,
+			// 	Content:   "🤔 Thinking...",
+			// 	Timestamp: time.Now().Unix(),
+			// })
 
 		case orchestrator.BotResponse:
-			if text, ok := event.Data.(string); ok {
-				v.emit(schema.Msg{
-					Role:      schema.AIMsg,
-					Content:   text,
-					Timestamp: time.Now().Unix(),
-				})
-			}
+			// if text, ok := event.Data.(string); ok {
+			// 	v.emit(schema.Msg{
+			// 		Role:      schema.AIMsg,
+			// 		Content:   text,
+			// 		Timestamp: time.Now().Unix(),
+			// 	})
+			// }
 
 		case orchestrator.BotSpeaking:
 			v.mu.Lock()

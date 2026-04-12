@@ -30,7 +30,7 @@ func main() {
 
 	models := []schema.ChatProvider{
 		agents.NewChatAgent("openai/gpt-4.1", sqlite),
-		agents.NewVoiceAgent(agents.NewChatAgent("openai/gpt-5.5-mini", sqlite)),
+		agents.NewVoiceAgent(agents.NewChatAgent("openai/gpt-5.4-mini", sqlite)),
 	}
 
 	clipt.Render(

@@ -44,6 +44,7 @@ func NewFileSearchTool() (*FileSearchTool, error) {
 		pinecone.WithHost(config.PineconeHost),
 		pinecone.WithEmbedder(e),
 		pinecone.WithAPIKey(config.PineconeAPIKey),
+		pinecone.WithNameSpace("datum-files"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Pinecone: %w", err)

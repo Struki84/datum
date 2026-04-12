@@ -99,11 +99,18 @@ func (layout LayoutView) View() string {
 		elements = append(elements, vp)
 	}
 
+	var inputView string
+	if layout.Mode == schema.Chat {
+		inputView = layout.Chat.Input.View()
+	} else {
+		inputView = "Voice"
+	}
+
 	// Render Chat input
 	input := lipgloss.PlaceHorizontal(
 		layout.WindowSize.Width,
 		lipgloss.Center,
-		layout.Chat.Input.View(),
+		inputView,
 		lipgloss.WithWhitespaceBackground(lipgloss.Color(layout.Style.WhitespaceBGcolor)),
 	)
 
@@ -116,7 +123,15 @@ func (layout LayoutView) View() string {
 	providerType := layout.Style.StatusLine.ProviderType.Render(layout.Chat.Provider.Type().String())
 	providerName := layout.Style.StatusLine.ProviderName.Render(layout.Chat.Provider.Name())
 	tab := layout.Style.StatusLine.ModeLabel.Render("tab")
-	mode := layout.Style.StatusLine.ModeName.Render(layout.Mode.String())
+
+	modeStyle := layout.Style.StatusLine.ModeName
+	if layout.Mode == schema.Voice {
+		modeStyle.Background(lipgloss.Color("#a6e3a1"))
+	} else {
+		modeStyle.Background(lipgloss.Color("#907AA9"))
+	}
+
+	mode := modeStyle.Render(layout.Mode.String())
 
 	leftPart := lipgloss.JoinHorizontal(lipgloss.Top, providerType, providerName)
 	rightPart := lipgloss.JoinHorizontal(lipgloss.Top, tab, mode)
@@ -153,29 +168,39 @@ func (layout LayoutView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyTab:
-			if _, ok := layout.Chat.Provider.(*agents.VoiceAgent); ok {
-				// switching back to text
+			if layout.Mode == schema.Voice {
+				// Activate text chat mode
 				layout.Mode = schema.Chat
-				layout.Chat.Provider.(*agents.VoiceAgent).Deactivate()
+
+				voice := layout.Chat.Provider.(*agents.VoiceAgent)
+				voice.Deactivate()
+
 				layout.Chat.Provider = layout.Providers[0]
-				layout.Providers[0].Stream(context.TODO(), func(ctx context.Context, msg schema.Msg) error {
+
+				layout.Chat.Provider.Stream(context.TODO(), func(ctx context.Context, msg schema.Msg) error {
 					layout.Chat.Stream <- msg
 					return nil
 				})
+
 			} else {
-				// switching to voice
-				layout.Mode = schema.Speach
-				voiceAgent := layout.Providers[1].(*agents.VoiceAgent)
-				voiceAgent.Stream(context.TODO(), func(ctx context.Context, msg schema.Msg) error {
+				// Activate vocie chat mode
+				layout.Mode = schema.Voice
+
+				voice := layout.Providers[1].(*agents.VoiceAgent)
+				layout.Chat.Provider = voice
+
+				layout.Chat.Provider.Stream(context.TODO(), func(ctx context.Context, msg schema.Msg) error {
 					layout.Chat.Stream <- msg
 					return nil
 				})
-				if err := voiceAgent.Activate(layout.Chat.Session); err != nil {
+
+				if err := voice.Activate(layout.Chat.Session); err != nil {
 					log.Printf("voice activation failed: %v", err)
 				}
-				layout.Chat.Provider = voiceAgent
 			}
+
 			return layout, nil
+
 		case tea.KeyEsc:
 			if layout.Menu.Active {
 				layout.Menu = layout.Menu.Close()

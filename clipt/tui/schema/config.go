@@ -12,7 +12,7 @@ const (
 	Chat Mode = iota
 	Debug
 	Action
-	Speach
+	Voice
 )
 
 func (mode Mode) String() string {
@@ -23,7 +23,7 @@ func (mode Mode) String() string {
 		return "Debug"
 	case Action:
 		return "Action"
-	case Speach:
+	case Voice:
 		return "Speach"
 	default:
 		return fmt.Sprintf("Mode(%d)", mode)
