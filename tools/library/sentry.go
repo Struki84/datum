@@ -41,7 +41,7 @@ func NewFileSentry(dirPath string) *FileSentry {
 		pinecone.WithHost(config.PineconeHost),
 		pinecone.WithEmbedder(e),
 		pinecone.WithAPIKey(config.PineconeAPIKey),
-		pinecone.WithNameSpace("datum-files"),
+		pinecone.WithNameSpace(config.PineconeNamespace),
 	)
 	if err != nil {
 		log.Fatal(err)

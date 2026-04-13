@@ -230,7 +230,7 @@ func NewChatAgent(model string, storage storage.SQLite) *ChatAgent {
 		return nil
 	}
 
-	filesDir := "./files"
+	filesDir := "./data"
 
 	// Init the tools that will be used
 	webSearch, _ := search.New(llm, cnf.SerpAPIKey)

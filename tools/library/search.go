@@ -44,7 +44,7 @@ func NewFileSearchTool() (*FileSearchTool, error) {
 		pinecone.WithHost(config.PineconeHost),
 		pinecone.WithEmbedder(e),
 		pinecone.WithAPIKey(config.PineconeAPIKey),
-		pinecone.WithNameSpace("datum-files"),
+		pinecone.WithNameSpace(config.PineconeNamespace),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Pinecone: %w", err)
@@ -79,7 +79,7 @@ func (tool *FileSearchTool) Call(ctx context.Context, input string) (string, err
 	}
 
 	docs, err := tool.store.SimilaritySearch(ctx, toolInput.Query, 5,
-		vectorstores.WithScoreThreshold(0.7),
+		vectorstores.WithScoreThreshold(0.5),
 	)
 	if err != nil {
 		return fmt.Sprintf("search failed: %s", err), nil

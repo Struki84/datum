@@ -7,11 +7,12 @@ import (
 )
 
 type Config struct {
-	OpenAIAPIKey     string `json:"OPENAI_API_KEY"`
-	OpenrouterAPIKey string `json:"OPENROUTER_API_KEY"`
-	SerpAPIKey       string `json:"SERP_API_KEY"`
-	PineconeHost     string `json:"PineconeHost"`
-	PineconeAPIKey   string `json:"PineconeAPIKey"`
+	OpenAIAPIKey      string `json:"OPENAI_API_KEY"`
+	OpenrouterAPIKey  string `json:"OPENROUTER_API_KEY"`
+	SerpAPIKey        string `json:"SERP_API_KEY"`
+	PineconeHost      string `json:"PineconeHost"`
+	PineconeAPIKey    string `json:"PineconeAPIKey"`
+	PineconeNamespace string `json:"PineconeNamespace"`
 }
 
 func New() *Config {

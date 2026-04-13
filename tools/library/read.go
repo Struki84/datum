@@ -39,7 +39,7 @@ func NewReadFileTool(llm llms.Model, filesDir string) (*ReadFileTool, error) {
 }
 
 func (*ReadFileTool) Name() string {
-	return "ReadFile"
+	return "ReadFiles"
 }
 
 func (tool *ReadFileTool) Description() string {
