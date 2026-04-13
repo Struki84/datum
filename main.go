@@ -33,9 +33,12 @@ func main() {
 	dbPath := "./basic.db"
 	sqlite := *storage.NewSQLite(dbPath)
 
+	chatAgent := agents.NewChatAgent("openai/gpt-4.1", sqlite)
+	voiceAgent := agents.NewVoiceAgent(agents.NewChatAgent("openai/gpt-4.1", sqlite))
+
 	models := []schema.ChatProvider{
-		agents.NewChatAgent("openai/gpt-4.1", sqlite),
-		agents.NewVoiceAgent(agents.NewChatAgent("openai/gpt-5.4-mini", sqlite)),
+		chatAgent,
+		voiceAgent,
 	}
 
 	clipt.Render(

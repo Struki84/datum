@@ -391,7 +391,7 @@ func (v *VoiceAgent) emit(msg schema.Msg) {
 
 func (v *VoiceAgent) watchdog(cancel chan struct{}) {
 	select {
-	case <-time.After(5 * time.Second):
+	case <-time.After(60 * time.Second):
 		v.mu.Lock()
 		stuck := v.state == voiceProcessing
 		v.mu.Unlock()

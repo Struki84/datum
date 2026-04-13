@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/lokutor-ai/lokutor-orchestrator/pkg/orchestrator"
@@ -390,5 +391,20 @@ func (agent *ChatAgent) Complete(ctx context.Context, messages []orchestrator.Me
 		}
 	}
 
-	return agent.Run(ctx, userInput, agent.currentSession)
+	var fallbackResponses = []string{
+		"I found the information, but I'm having trouble putting it into words. Could you try asking again?",
+		"Something got lost on my end. I processed your request but couldn't form a response — give me another shot.",
+		"My thoughts seem to have wandered off. Want to try that again?",
+	}
+
+	runCtx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	response, err := agent.Run(runCtx, userInput, agent.currentSession)
+	if err != nil {
+		log.Printf("Error running chat agent Complete(): %v", err)
+		return fallbackResponses[rand.Intn(len(fallbackResponses))], nil
+	}
+
+	return response, nil
 }

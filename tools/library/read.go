@@ -109,7 +109,7 @@ func (tool *ReadFileTool) Call(ctx context.Context, input string) (string, error
 	docs, err := fileLoader.LoadAndSplit(ctx, tool.splitter)
 	if err != nil {
 		log.Println("Error reading file:", err)
-		return "", err
+		return fmt.Sprintf("error reading file: %s", err), nil
 	}
 
 	if toolInput.Query == "" {
@@ -123,7 +123,8 @@ func (tool *ReadFileTool) Call(ctx context.Context, input string) (string, error
 	})
 
 	if err != nil {
-		return "", err
+		log.Println("Error reading file:", err)
+		return fmt.Sprintf("error reading file: %s", err), nil
 	}
 
 	return answer["text"].(string), nil
