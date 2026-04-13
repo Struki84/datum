@@ -22,10 +22,11 @@ var _ tools.Tool = &ReadFileTool{}
 type ReadFileTool struct {
 	llm      llms.Model
 	splitter textsplitter.TextSplitter
+	filesDir string
 	files    []string
 }
 
-func NewReadFileTool(llm llms.Model, files []string) (*ReadFileTool, error) {
+func NewReadFileTool(llm llms.Model, filesDir string) (*ReadFileTool, error) {
 	splitter := textsplitter.NewRecursiveCharacter()
 	splitter.ChunkSize = 500
 	splitter.ChunkOverlap = 50
@@ -33,7 +34,7 @@ func NewReadFileTool(llm llms.Model, files []string) (*ReadFileTool, error) {
 	return &ReadFileTool{
 		llm:      llm,
 		splitter: splitter,
-		files:    files,
+		filesDir: filesDir,
 	}, nil
 }
 
@@ -48,12 +49,26 @@ func (tool *ReadFileTool) Description() string {
 func (tool *ReadFileTool) Call(ctx context.Context, input string) (string, error) {
 	log.Println("Reading file with input:", input)
 
+	tool.files = []string{}
+
+	entries, err := os.ReadDir(tool.filesDir)
+	if err != nil {
+		return fmt.Sprintf("error reading files directory %s", err), nil
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		tool.files = append(tool.files, entry.Name())
+	}
+
 	var toolInput struct {
 		File  string `json:"file,omitempty"`
 		Query string `json:"query,omitempty"`
 	}
 
-	err := json.Unmarshal([]byte(input), &toolInput)
+	err = json.Unmarshal([]byte(input), &toolInput)
 	if err != nil {
 		fmt.Println(err)
 		return fmt.Sprintf("%v: %s", "invalid input", err), nil
@@ -72,7 +87,7 @@ func (tool *ReadFileTool) Call(ctx context.Context, input string) (string, error
 	}
 
 	// tmp files location basePath
-	basePath := "./files"
+	basePath := tool.filesDir
 
 	filePath := filepath.Join(basePath, requestedFile)
 	fileBytes, err := os.ReadFile(filePath)

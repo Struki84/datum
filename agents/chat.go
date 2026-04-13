@@ -12,6 +12,7 @@ import (
 	"github.com/struki84/datum/config"
 	"github.com/struki84/datum/sdk/glg/graph"
 	"github.com/struki84/datum/sdk/glg/nodes"
+	"github.com/struki84/datum/tools/library"
 	scraper "github.com/struki84/datum/tools/scrapper"
 	"github.com/struki84/datum/tools/search"
 	"github.com/tmc/langchaingo/llms"
@@ -24,21 +25,34 @@ var (
 You are Datum, an intelligent voice assistant powered by a knowledge base.
 Your role is to answer user questions accurately using available tools and retrieved context.
 
-You follow a structured reasoning process:
+When answering, prefer information from the knowledge base over general knowledge.
+If the knowledge base doesn't have what you need, fall back to web search.
+If neither source has the answer, say so honestly rather than guessing.
 
-1. THINK - Analyze the user's question and determine what information you need.
-2. ACT - Use available tools (web search, knowledge base retrieval) to gather relevant information.
-3. OBSERVE - Review the results from your tools.
-4. RESPOND - Synthesize a clear, concise answer based on the gathered context.
+Keep responses concise and conversational — they will be spoken aloud, so avoid
+markdown formatting, bullet lists, or code blocks in your final answer.
+You may call multiple tools if needed before giving your final response.`
 
-Guidelines:
-- Always prefer information from the knowledge base over general knowledge.
-- If the knowledge base doesn't have relevant information, use web search.
-- If neither source has the answer, say so honestly rather than guessing.
-- Keep responses concise and conversational since they will be spoken aloud.
-- Avoid markdown formatting, bullet lists, or code blocks in your final response as the output is converted to speech.
-- When using tools, you may call multiple tools if needed before giving your final answer.
-- Cite your reasoning briefly when the source matters.`
+//	primerMsg = `
+//
+// You are Datum, an intelligent voice assistant powered by a knowledge base.
+// Your role is to answer user questions accurately using available tools and retrieved context.
+//
+// You follow a structured reasoning process:
+//
+// 1. THINK - Analyze the user's question and determine what information you need.
+// 2. ACT - Use available tools (web search, knowledge base retrieval) to gather relevant information.
+// 3. OBSERVE - Review the results from your tools.
+// 4. RESPOND - Synthesize a clear, concise answer based on the gathered context.
+//
+// Guidelines:
+// - Always prefer information from the knowledge base over general knowledge.
+// - If the knowledge base doesn't have relevant information, use web search.
+// - If neither source has the answer, say so honestly rather than guessing.
+// - Keep responses concise and conversational since they will be spoken aloud.
+// - Avoid markdown formatting, bullet lists, or code blocks in your final response as the output is converted to speech.
+// - When using tools, you may call multiple tools if needed before giving your final answer.
+// - Cite your reasoning briefly when the source matters.`
 )
 
 type ChatCallback struct {
@@ -154,6 +168,53 @@ func NewChatAgent(model string, storage storage.SQLite) *ChatAgent {
 				},
 			},
 		},
+		{
+			Type: "function",
+			Function: &llms.FunctionDefinition{
+				Name:        "ListFiles",
+				Description: "Lists all files you can read and search.",
+				Parameters: map[string]any{
+					"type":       "object",
+					"properties": map[string]any{},
+				},
+			},
+		},
+		{
+			Type: "function",
+			Function: &llms.FunctionDefinition{
+				Name:        "ReadFiles",
+				Description: "Lists all files you can read and search.",
+				Parameters: map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"file": map[string]any{
+							"type":        "string",
+							"description": "Name of the file for reading.",
+						},
+						"query": map[string]any{
+							"type":        "string",
+							"description": "The search query",
+						},
+					},
+				},
+			},
+		},
+		{
+			Type: "function",
+			Function: &llms.FunctionDefinition{
+				Name:        "SearchFiles",
+				Description: "Searches trough the files for relevant information.",
+				Parameters: map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"query": map[string]any{
+							"type":        "string",
+							"description": "The search query",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	cnf := config.New()
@@ -169,8 +230,14 @@ func NewChatAgent(model string, storage storage.SQLite) *ChatAgent {
 		return nil
 	}
 
+	filesDir := "./files"
+
+	// Init the tools that will be used
 	webSearch, _ := search.New(llm, cnf.SerpAPIKey)
 	webBrowser, _ := scraper.New()
+	listFiles, _ := library.NewFileListTool(filesDir)
+	searchFiles, _ := library.NewFileSearchTool()
+	readFiles, _ := library.NewReadFileTool(llm, filesDir)
 
 	return &ChatAgent{
 		LLM:          llm,
@@ -184,6 +251,9 @@ func NewChatAgent(model string, storage storage.SQLite) *ChatAgent {
 		tools: []tools.Tool{
 			webSearch,
 			webBrowser,
+			listFiles,
+			searchFiles,
+			readFiles,
 		},
 	}
 }

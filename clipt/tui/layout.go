@@ -26,9 +26,10 @@ type LayoutView struct {
 	Storage   schema.SessionStorage
 	Providers []schema.ChatProvider
 
-	Info   string
-	Status string
-	Mode   schema.Mode
+	Info    string
+	Status  string
+	Mode    schema.Mode
+	vuMeter *VUMeter
 }
 
 func NewLayout(conf schema.Config) LayoutView {
@@ -41,6 +42,10 @@ func NewLayout(conf schema.Config) LayoutView {
 		Info:      "enter - send | \"/\" - menu",
 		Mode:      schema.Chat,
 	}
+
+	voice := conf.Providers[1].(*agents.VoiceAgent)
+
+	layout.vuMeter = NewVUMeter(0, voice.LVLChannel)
 
 	sessionID := randstr.String(8)
 	layout.Chat.Msgs = []schema.Msg{}
@@ -100,10 +105,23 @@ func (layout LayoutView) View() string {
 	}
 
 	var inputView string
+
 	if layout.Mode == schema.Chat {
 		inputView = layout.Chat.Input.View()
 	} else {
-		inputView = "Voice"
+		inputStyle := layout.Style.Chat.Input.
+			Width(layout.WindowSize.Width - 6).
+			Height(inputHeight).
+			PaddingBottom(1)
+
+		// Meter width = inner width of the input box (subtract 2 for border/padding).
+		meterWidth := layout.WindowSize.Width - 8
+		if meterWidth < 12 {
+			meterWidth = 12
+		}
+		layout.vuMeter.Width = meterWidth
+
+		inputView = inputStyle.Render(layout.vuMeter.View())
 	}
 
 	// Render Chat input
@@ -120,17 +138,20 @@ func (layout LayoutView) View() string {
 	elements = append(elements, infoLine)
 
 	// Render the status line
-	providerType := layout.Style.StatusLine.ProviderType.Render(layout.Chat.Provider.Type().String())
-	providerName := layout.Style.StatusLine.ProviderName.Render(layout.Chat.Provider.Name())
-	tab := layout.Style.StatusLine.ModeLabel.Render("tab")
 
+	providerStyle := layout.Style.StatusLine.ProviderType
 	modeStyle := layout.Style.StatusLine.ModeName
 	if layout.Mode == schema.Voice {
-		modeStyle.Background(lipgloss.Color("#a6e3a1"))
+		modeStyle = modeStyle.Background(lipgloss.Color("#a6e3a1")).BorderForeground(lipgloss.Color("#a6e3a1"))
+		providerStyle = providerStyle.Background(lipgloss.Color("#a6e3a1")).BorderForeground(lipgloss.Color("#a6e3a1"))
 	} else {
-		modeStyle.Background(lipgloss.Color("#907AA9"))
+		modeStyle = modeStyle.Background(lipgloss.Color("#B4BEFE")).BorderForeground(lipgloss.Color("#B4BEFE"))
+		providerStyle = providerStyle.Background(lipgloss.Color("#B4BEFE")).BorderForeground(lipgloss.Color("#B4BEFE"))
 	}
 
+	providerType := providerStyle.Render(layout.Chat.Provider.Type().String())
+	providerName := layout.Style.StatusLine.ProviderName.Render(layout.Chat.Provider.Name())
+	tab := layout.Style.StatusLine.ModeLabel.Render("tab")
 	mode := modeStyle.Render(layout.Mode.String())
 
 	leftPart := lipgloss.JoinHorizontal(lipgloss.Top, providerType, providerName)
@@ -165,12 +186,20 @@ func (layout LayoutView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		layout.WindowSize = msg
+	case vuTickMsg:
+
+		cmd := layout.vuMeter.Update(msg)
+		cmds = append(cmds, cmd)
+		return layout, tea.Batch(cmds...)
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyTab:
 			if layout.Mode == schema.Voice {
 				// Activate text chat mode
 				layout.Mode = schema.Chat
+
+				layout.vuMeter.Deactivate()
 
 				voice := layout.Chat.Provider.(*agents.VoiceAgent)
 				voice.Deactivate()
@@ -197,9 +226,11 @@ func (layout LayoutView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err := voice.Activate(layout.Chat.Session); err != nil {
 					log.Printf("voice activation failed: %v", err)
 				}
+
+				cmds = append(cmds, layout.vuMeter.Activate())
 			}
 
-			return layout, nil
+			return layout, tea.Batch(cmds...)
 
 		case tea.KeyEsc:
 			if layout.Menu.Active {

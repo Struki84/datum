@@ -29,13 +29,6 @@ const (
 	voiceSpeaking
 )
 
-type NoOpLogger struct{}
-
-func (n *NoOpLogger) Debug(msg string, args ...interface{}) {}
-func (n *NoOpLogger) Info(msg string, args ...interface{})  {}
-func (n *NoOpLogger) Warn(msg string, args ...interface{})  {}
-func (n *NoOpLogger) Error(msg string, args ...interface{}) {}
-
 type VoiceAgent struct {
 	agent *ChatAgent
 
@@ -60,6 +53,7 @@ type VoiceAgent struct {
 
 	// TUI bridge
 	streamHandler func(ctx context.Context, msg schema.Msg) error
+	LVLChannel    chan float64
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -93,9 +87,10 @@ func NewVoiceAgent(chatAgent *ChatAgent) *VoiceAgent {
 	orch := orchestrator.New(stt, chatAgent, tts, vad, cfg, &orchestrator.NoOpLogger{})
 
 	return &VoiceAgent{
-		agent: chatAgent,
-		orch:  orch,
-		tts:   tts, // stored here — shared by eventLoop and watchdog
+		agent:      chatAgent,
+		orch:       orch,
+		tts:        tts, // stored here — shared by eventLoop and watchdog
+		LVLChannel: make(chan float64, 8),
 	}
 }
 
@@ -141,6 +136,12 @@ func (v *VoiceAgent) Activate(session schema.ChatSession) error {
 	}
 
 	go v.eventLoop()
+
+	v.emit(schema.Msg{
+		Role:      schema.SysMsg,
+		Content:   "🎤 Listening...",
+		Timestamp: time.Now().Unix(),
+	})
 
 	return nil
 }
@@ -203,6 +204,20 @@ func (v *VoiceAgent) startAudio() error {
 			case inputChan <- buf:
 			default:
 			}
+
+			// Publish mic level while listening.
+			v.mu.Lock()
+			s := v.state
+			v.mu.Unlock()
+
+			if s == voiceListening {
+				level := RMSFromPCM(pInput)
+				// log.Printf("level: %f", level)
+				select {
+				case v.LVLChannel <- level:
+				default:
+				}
+			}
 		}
 
 		if pOutput != nil {
@@ -228,7 +243,22 @@ func (v *VoiceAgent) startAudio() error {
 				v.playbackBytes = v.playbackBytes[bytesToRead:]
 			}
 
+			// Publish playback level while speaking.
+			speaking := v.state == voiceSpeaking && v.playbackReady
+			var outputSnap []byte
+			if speaking && len(pOutput) > 0 {
+				outputSnap = make([]byte, len(pOutput))
+				copy(outputSnap, pOutput)
+			}
+
 			v.mu.Unlock()
+
+			if outputSnap != nil {
+				select {
+				case v.LVLChannel <- RMSFromPCM(outputSnap):
+				default:
+				}
+			}
 		}
 	}
 
@@ -258,11 +288,11 @@ func (v *VoiceAgent) eventLoop() {
 		switch event.Type {
 
 		case orchestrator.UserSpeaking:
-			v.emit(schema.Msg{
-				Role:      schema.SysMsg,
-				Content:   "🎤 Listening...",
-				Timestamp: time.Now().Unix(),
-			})
+			// v.emit(schema.Msg{
+			// 	Role:      schema.SysMsg,
+			// 	Content:   "🎤 Listening...",
+			// 	Timestamp: time.Now().Unix(),
+			// })
 
 		case orchestrator.UserStopped:
 			v.mu.Lock()
@@ -298,11 +328,11 @@ func (v *VoiceAgent) eventLoop() {
 			}
 			v.mu.Unlock()
 
-			// v.emit(schema.Msg{
-			// 	Role:      schema.SysMsg,
-			// 	Content:   "🤔 Thinking...",
-			// 	Timestamp: time.Now().Unix(),
-			// })
+			v.emit(schema.Msg{
+				Role:      schema.SysMsg,
+				Content:   "🤔 Thinking...",
+				Timestamp: time.Now().Unix(),
+			})
 
 		case orchestrator.BotResponse:
 			// if text, ok := event.Data.(string); ok {
@@ -318,11 +348,11 @@ func (v *VoiceAgent) eventLoop() {
 			v.state = voiceSpeaking
 			v.mu.Unlock()
 
-			v.emit(schema.Msg{
-				Role:      schema.SysMsg,
-				Content:   "🔊 Speaking...",
-				Timestamp: time.Now().Unix(),
-			})
+			// v.emit(schema.Msg{
+			// 	Role:      schema.SysMsg,
+			// 	Content:   "🔊 Speaking...",
+			// 	Timestamp: time.Now().Unix(),
+			// })
 
 			go v.monitorPlayback()
 
@@ -425,7 +455,7 @@ func (v *VoiceAgent) monitorPlayback() {
 
 			v.emit(schema.Msg{
 				Role:      schema.SysMsg,
-				Content:   "🎤 Ready, speak now...",
+				Content:   "🎤 Listening...",
 				Timestamp: time.Now().Unix(),
 			})
 			return

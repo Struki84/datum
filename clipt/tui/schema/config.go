@@ -24,7 +24,7 @@ func (mode Mode) String() string {
 	case Action:
 		return "Action"
 	case Voice:
-		return "Speach"
+		return "Voice"
 	default:
 		return fmt.Sprintf("Mode(%d)", mode)
 	}
