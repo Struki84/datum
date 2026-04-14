@@ -1,5 +1,8 @@
 {
   "OPENAI_API_KEY": "",
   "OPENROUTER_API_KEY": "",
-  "SERPAPI_API_KEY": ""
+  "SERP_API_KEY": "",
+  "PineconeHost": "",
+  "PineconeAPIKey": "",
+  "PineconeNamespace": ""
 }
