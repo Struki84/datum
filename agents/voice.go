@@ -48,6 +48,7 @@ type VoiceAgent struct {
 	mu             sync.Mutex
 	playbackBytes  []byte
 	playbackReady  bool
+	lastChunkAt    time.Time
 	watchdogCancel chan struct{}
 	state          voiceState
 
@@ -89,7 +90,7 @@ func NewVoiceAgent(chatAgent *ChatAgent) *VoiceAgent {
 	return &VoiceAgent{
 		agent:      chatAgent,
 		orch:       orch,
-		tts:        tts, // stored here — shared by eventLoop and watchdog
+		tts:        tts,
 		LVLChannel: make(chan float64, 8),
 	}
 }
@@ -120,6 +121,7 @@ func (v *VoiceAgent) Run(ctx context.Context, input string, session schema.ChatS
 // ── Activation / deactivation (called on tab switch) ─────────────────────────
 
 func (v *VoiceAgent) Activate(session schema.ChatSession) error {
+	log.Println("VoiceAgent: Activating...")
 	v.ctx, v.cancel = context.WithCancel(context.Background())
 
 	v.agent.SetSession(session)
@@ -147,6 +149,7 @@ func (v *VoiceAgent) Activate(session schema.ChatSession) error {
 }
 
 func (v *VoiceAgent) Deactivate() {
+	log.Println("VoiceAgent: Deactivating...")
 	if v.device != nil {
 		_ = v.device.Stop()
 		v.device.Uninit()
@@ -212,7 +215,6 @@ func (v *VoiceAgent) startAudio() error {
 
 			if s == voiceListening {
 				level := RMSFromPCM(pInput)
-				// log.Printf("level: %f", level)
 				select {
 				case v.LVLChannel <- level:
 				default:
@@ -285,14 +287,10 @@ func (v *VoiceAgent) startAudio() error {
 
 func (v *VoiceAgent) eventLoop() {
 	for event := range v.stream.Events() {
+		log.Printf("eventLoop: received event type=%v", event.Type)
 		switch event.Type {
 
 		case orchestrator.UserSpeaking:
-			// v.emit(schema.Msg{
-			// 	Role:      schema.SysMsg,
-			// 	Content:   "🎤 Listening...",
-			// 	Timestamp: time.Now().Unix(),
-			// })
 
 		case orchestrator.UserStopped:
 			v.mu.Lock()
@@ -300,12 +298,6 @@ func (v *VoiceAgent) eventLoop() {
 			cancel := make(chan struct{})
 			v.watchdogCancel = cancel
 			v.mu.Unlock()
-
-			// v.emit(schema.Msg{
-			// 	Role:      schema.SysMsg,
-			// 	Content:   "⏳ Processing...",
-			// 	Timestamp: time.Now().Unix(),
-			// })
 
 			go v.watchdog(cancel)
 
@@ -335,24 +327,12 @@ func (v *VoiceAgent) eventLoop() {
 			})
 
 		case orchestrator.BotResponse:
-			// if text, ok := event.Data.(string); ok {
-			// 	v.emit(schema.Msg{
-			// 		Role:      schema.AIMsg,
-			// 		Content:   text,
-			// 		Timestamp: time.Now().Unix(),
-			// 	})
-			// }
 
 		case orchestrator.BotSpeaking:
 			v.mu.Lock()
 			v.state = voiceSpeaking
+			v.lastChunkAt = time.Now()
 			v.mu.Unlock()
-
-			// v.emit(schema.Msg{
-			// 	Role:      schema.SysMsg,
-			// 	Content:   "🔊 Speaking...",
-			// 	Timestamp: time.Now().Unix(),
-			// })
 
 			go v.monitorPlayback()
 
@@ -360,6 +340,7 @@ func (v *VoiceAgent) eventLoop() {
 			chunk, _ := event.Data.([]byte)
 			v.mu.Lock()
 			v.playbackBytes = append(v.playbackBytes, chunk...)
+			v.lastChunkAt = time.Now()
 			v.mu.Unlock()
 
 		case orchestrator.ErrorEvent:
@@ -416,6 +397,7 @@ func (v *VoiceAgent) watchdog(cancel chan struct{}) {
 		v.mu.Lock()
 		v.playbackBytes = retryAudio
 		v.playbackReady = false
+		v.lastChunkAt = time.Now()
 		v.state = voiceSpeaking
 		v.mu.Unlock()
 
@@ -427,6 +409,7 @@ func (v *VoiceAgent) watchdog(cancel chan struct{}) {
 }
 
 func (v *VoiceAgent) monitorPlayback() {
+	// Wait for playback to actually start (buffer threshold met)
 	for {
 		time.Sleep(50 * time.Millisecond)
 		v.mu.Lock()
@@ -435,17 +418,24 @@ func (v *VoiceAgent) monitorPlayback() {
 		if started {
 			break
 		}
+		log.Printf("monitorPlayback: waiting for playbackReady...")
 	}
 
+	// Wait until buffer is empty AND no new chunk has arrived for 300ms
 	for {
 		time.Sleep(50 * time.Millisecond)
 		v.mu.Lock()
 		empty := len(v.playbackBytes) == 0
+		chunksDone := time.Since(v.lastChunkAt) > 300*time.Millisecond
 		s := v.state
+		bufLen := len(v.playbackBytes)
+		chunkAge := time.Since(v.lastChunkAt)
 		v.mu.Unlock()
 
-		if empty && s == voiceSpeaking {
-			time.Sleep(300 * time.Millisecond)
+		log.Printf("monitorPlayback: state=%v empty=%v chunksDone=%v bufLen=%d chunkAge=%v", s, empty, chunksDone, bufLen, chunkAge)
+
+		if empty && chunksDone && s == voiceSpeaking {
+			time.Sleep(200 * time.Millisecond)
 			v.mu.Lock()
 			if v.state == voiceSpeaking {
 				v.state = voiceListening

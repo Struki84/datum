@@ -82,7 +82,7 @@ Binaries for macOS and Linux are included in the repository root. No Go installa
 
 **macOS:**
 ```bash
-./datum-darwin
+./datum-osx
 ```
 
 **Linux:**

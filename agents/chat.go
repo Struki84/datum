@@ -397,10 +397,10 @@ func (agent *ChatAgent) Complete(ctx context.Context, messages []orchestrator.Me
 		"My thoughts seem to have wandered off. Want to try that again?",
 	}
 
-	runCtx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
+	// runCtx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	// defer cancel()
 
-	response, err := agent.Run(runCtx, userInput, agent.currentSession)
+	response, err := agent.Run(ctx, userInput, agent.currentSession)
 	if err != nil {
 		log.Printf("Error running chat agent Complete(): %v", err)
 		return fallbackResponses[rand.Intn(len(fallbackResponses))], nil

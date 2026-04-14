@@ -481,7 +481,7 @@ func (ms *ManagedStream) startStreamingSTT(provider StreamingSTTProvider) {
 		ms.lastUserAudio = append(ms.lastUserAudio, data...)
 		ms.audioBuf.Reset()
 		ms.mu.Unlock()
-		
+
 		// Use blocking send to ensure pre-buffered audio is not discarded
 		select {
 		case sttChan <- data:
@@ -500,7 +500,7 @@ func (ms *ManagedStream) runBatchPipeline(audioData []byte) {
 
 	ms.mu.Lock()
 	previousCancel := ms.pipelineCancel
-	ctx, cancel := context.WithTimeout(ms.ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ms.ctx, 120*time.Second)
 
 	ms.pipelineCtx = ctx
 	ms.pipelineCancel = cancel

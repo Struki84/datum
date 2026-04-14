@@ -5,3 +5,4 @@ debug.log
 .DS_Store
 config.json
 *.config.json
+script.md
